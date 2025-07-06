@@ -29,7 +29,7 @@ def extract_text_from_image(image, model_name="llama3.2-vision:11b"):
             messages=[
                 {
                     'role': 'user',
-                    'content': 'Extract ALL text from this image exactly as it appears. Include code, comments, variable names, function names, and any written content. Return only the text content, nothing else.',
+                    'content': 'Carefully examine this entire image from TOP TO BOTTOM and extract ALL text exactly as it appears. Pay special attention to the very top and bottom edges of the image. Include every line of code, comments, imports, headers, and any text that appears anywhere in the image. Do not skip any lines. Return only the text content in the exact order it appears.',
                     'images': [image_b64]
                 }
             ],
