@@ -4,6 +4,7 @@ import base64
 import io
 from PIL import Image
 import ollama
+import time
 
 def encode_image_to_base64(image):
     """Convert PIL image to base64 string"""
@@ -12,7 +13,7 @@ def encode_image_to_base64(image):
     img_str = base64.b64encode(buffered.getvalue()).decode()
     return img_str
 
-def extract_text_from_image(image, model_name="llava:7b"):
+def extract_text_from_image(image, model_name="llama3.2-vision:11b"):
     """Extract text from image using Ollama vision model with streaming"""
     try:
         # Convert image to base64
@@ -28,7 +29,7 @@ def extract_text_from_image(image, model_name="llava:7b"):
             messages=[
                 {
                     'role': 'user',
-                    'content': 'Extract all text from this image exactly as it appears. Only return the text content, nothing else. If there is no text, return "No text found".',
+                    'content': 'Extract ALL text from this image exactly as it appears. Include code, comments, variable names, function names, and any written content. Return only the text content, nothing else.',
                     'images': [image_b64]
                 }
             ],
@@ -48,45 +49,68 @@ def extract_text_from_image(image, model_name="llava:7b"):
             if 'message' in chunk and 'content' in chunk['message']:
                 full_response += chunk['message']['content']
                 chunk_counter += 1
+                
+                # Update streaming display
                 stream_placeholder.text_area(
-                    "Extracted Text (Streaming):",
+                    "Extracted Text:",
                     value=full_response,
                     height=150,
                     disabled=True,
                     key=f"text_stream_{chunk_counter}"
                 )
+                
+                # Auto-scroll JavaScript injection
+                st.markdown(f"""
+                <script>
+                setTimeout(function() {{
+                    var textAreas = document.querySelectorAll('textarea');
+                    if (textAreas.length > 0) {{
+                        var lastTextArea = textAreas[textAreas.length - 1];
+                        lastTextArea.scrollTop = lastTextArea.scrollHeight;
+                    }}
+                }}, 50);
+                </script>
+                """, unsafe_allow_html=True)
+                
+                # Small delay for smoother animation
+                time.sleep(0.05)
         
         return full_response
     
     except Exception as e:
         return f"Error processing image: {str(e)}"
 
-def explain_image_content(image, model_name="llava:7b"):
-    """Explain what the code/content in the image is doing with streaming"""
+def get_code_overview(extracted_text):
+    """Get detailed overview of what the code does"""
     try:
-        # Convert image to base64
-        image_b64 = encode_image_to_base64(image)
-        
         # Initialize streaming placeholder
         stream_placeholder = st.empty()
         full_response = ""
         
-        # Call Ollama API for explanation with streaming
+        # Call Ollama API for code overview
         stream = ollama.chat(
-            model=model_name,
+            model="codellama:13b",
             messages=[
                 {
                     'role': 'user',
-                    'content': 'Briefly describe what this image contains. If it has code, explain what it does (2-3 sentences).',
-                    'images': [image_b64]
+                    'content': f'''Analyze this code and provide a detailed overview of what it does:
+
+1. What is the main purpose of this code?
+2. What programming language is it?
+3. What are the key functions/methods?
+4. What does the code accomplish?
+5. Any important algorithms or patterns used?
+
+Code:
+{extracted_text}'''
                 }
             ],
             options={
-                'num_gpu': -1,  # Use all available GPUs
-                'num_thread': 2,  # Minimal CPU threads to force GPU usage
-                'temperature': 0.3,  # Slightly higher temperature for more descriptive explanations
-                'num_predict': 200,  # Limit response length
-                'num_ctx': 2048,  # Reduce context window for faster processing
+                'num_gpu': -1,
+                'num_thread': 2,
+                'temperature': 0.2,
+                'num_predict': 600,
+                'num_ctx': 2048,
             },
             stream=True
         )
@@ -97,18 +121,36 @@ def explain_image_content(image, model_name="llava:7b"):
             if 'message' in chunk and 'content' in chunk['message']:
                 full_response += chunk['message']['content']
                 chunk_counter += 1
+                
+                # Update streaming display
                 stream_placeholder.text_area(
-                    "Visual Analysis (Streaming):",
+                    "Code Overview:",
                     value=full_response,
-                    height=120,
+                    height=200,
                     disabled=True,
-                    key=f"visual_stream_{chunk_counter}"
+                    key=f"overview_stream_{chunk_counter}"
                 )
+                
+                # Auto-scroll JavaScript injection
+                st.markdown(f"""
+                <script>
+                setTimeout(function() {{
+                    var textAreas = document.querySelectorAll('textarea');
+                    if (textAreas.length > 0) {{
+                        var lastTextArea = textAreas[textAreas.length - 1];
+                        lastTextArea.scrollTop = lastTextArea.scrollHeight;
+                    }}
+                }}, 50);
+                </script>
+                """, unsafe_allow_html=True)
+                
+                # Small delay for smoother animation
+                time.sleep(0.05)
         
         return full_response
     
     except Exception as e:
-        return f"Error analyzing image: {str(e)}"
+        return f"Error getting code overview: {str(e)}"
 
 def explain_code_with_codellama(extracted_text):
     """Use CodeLlama to explain code line by line with streaming"""
@@ -118,18 +160,26 @@ def explain_code_with_codellama(extracted_text):
         full_response = ""
         chunk_counter = 0
         
-        # Call Ollama API with CodeLlama model using streaming
+        # Call Ollama API with DeepSeek Coder model using streaming
         stream = ollama.chat(
-            model="codellama:13b",
+            model="deepseek-coder-v2:16b",
             messages=[
                 {
                     'role': 'user',
-                    'content': f'''Analyze this code briefly:
-1. What the code does (1-2 sentences)
-2. Key functions/methods
-3. Important concepts
+                    'content': f'''Explain this code line by line. For each line, provide:
+1. The original code line
+2. A detailed comment explaining what that line does
 
-Code:
+Format like this:
+```
+// Comment explaining what this line does
+original code line
+
+// Comment explaining what this line does  
+original code line
+```
+
+Code to analyze:
 {extracted_text}'''
                 }
             ],
@@ -148,18 +198,36 @@ Code:
             if 'message' in chunk and 'content' in chunk['message']:
                 full_response += chunk['message']['content']
                 chunk_counter += 1
+                
+                # Update streaming display
                 stream_placeholder.text_area(
-                    "CodeLlama Analysis (Streaming):",
+                    "Line-by-Line Explanation:",
                     value=full_response,
-                    height=200,
+                    height=300,
                     disabled=True,
-                    key=f"codellama_stream_{chunk_counter}"
+                    key=f"linebyline_stream_{chunk_counter}"
                 )
+                
+                # Auto-scroll JavaScript injection
+                st.markdown(f"""
+                <script>
+                setTimeout(function() {{
+                    var textAreas = document.querySelectorAll('textarea');
+                    if (textAreas.length > 0) {{
+                        var lastTextArea = textAreas[textAreas.length - 1];
+                        lastTextArea.scrollTop = lastTextArea.scrollHeight;
+                    }}
+                }}, 50);
+                </script>
+                """, unsafe_allow_html=True)
+                
+                # Small delay for smoother animation
+                time.sleep(0.05)
         
         return full_response
     
     except Exception as e:
-        return f"Error analyzing code with CodeLlama: {str(e)}"
+        return f"Error explaining code line by line: {str(e)}"
 
 def main():
     st.set_page_config(
@@ -174,8 +242,8 @@ def main():
     # Sidebar for model selection
     with st.sidebar:
         st.header("Settings")
-        model_options = ["llava:7b", "llama3.2-vision:11b", "llama3.2-vision:90b"]
-        selected_model = st.selectbox("Select LLaVA Model", model_options)
+        model_options = ["llama3.2-vision:11b"]
+        selected_model = st.selectbox("Select Vision Model", model_options)
         
         st.markdown("---")
         st.markdown("**Instructions:**")
@@ -205,91 +273,101 @@ def main():
                 progress_bar = st.progress(0)
                 status_text = st.empty()
                 
+                # Create containers for streaming outputs
+                st.write("---")
+                st.subheader("🔄 Live Processing")
+                
+                text_container = st.container()
+                visual_container = st.container()  
+                code_container = st.container()
+                
                 # Step 1: Extract text
                 status_text.text("📝 Extracting text from image... (33%)")
                 progress_bar.progress(33)
-                extracted_text = extract_text_from_image(image, selected_model)
-                st.session_state.extracted_text = extracted_text
+                with text_container:
+                    st.write("📝 **Text Extraction:**")
+                    extracted_text = extract_text_from_image(image, selected_model)
+                    st.session_state.extracted_text = extracted_text
                 
-                # Step 2: Visual analysis
-                status_text.text("💡 Analyzing image content... (66%)")
-                progress_bar.progress(66)
-                explanation = explain_image_content(image, selected_model)
-                st.session_state.explanation = explanation
-                
-                # Step 3: CodeLlama analysis (if text found)
+                # Step 2: Code overview (if text found)
                 if extracted_text and extracted_text != "No text found":
-                    status_text.text("🔍 Analyzing code with CodeLlama... (90%)")
+                    status_text.text("💡 Getting code overview... (66%)")
+                    progress_bar.progress(66)
+                    with visual_container:
+                        st.write("💡 **Code Overview:**")
+                        overview = get_code_overview(extracted_text)
+                        st.session_state.overview = overview
+                    
+                    # Step 3: Line-by-line explanation
+                    status_text.text("🔍 Explaining code line by line... (90%)")
                     progress_bar.progress(90)
-                    code_analysis = explain_code_with_codellama(extracted_text)
-                    st.session_state.code_analysis = code_analysis
+                    with code_container:
+                        st.write("🔍 **Line-by-Line Explanation:**")
+                        line_explanation = explain_code_with_codellama(extracted_text)
+                        st.session_state.line_explanation = line_explanation
                 
                 # Complete
                 status_text.text("✅ Processing complete!")
                 progress_bar.progress(100)
                 
                 # Clear progress indicators after a short delay
-                import time
                 time.sleep(1)
                 progress_bar.empty()
                 status_text.empty()
     
     with col2:
-        st.header("Results")
+        st.header("Final Results")
         if hasattr(st.session_state, 'extracted_text'):
-            # Image to Text Section
-            st.subheader("📝 Image to Text")
+            # A. Text Extraction Section
+            st.subheader("A. 📝 Text Extraction")
             st.text_area(
-                "Extracted Text:",
+                "Extracted text as it appears in the image:",
                 value=st.session_state.extracted_text,
                 height=200,
                 disabled=True,
                 key="final_extracted_text"
             )
             
-            # Copy text button
-            if st.button("📋 Copy Text"):
+            if st.button("📋 Copy Extracted Text"):
                 st.code(st.session_state.extracted_text)
                 st.success("Text copied!")
             
-            # Explanation Section
-            if hasattr(st.session_state, 'explanation'):
-                st.subheader("💡 Visual Analysis")
+            # B. Code Overview Section
+            if hasattr(st.session_state, 'overview'):
+                st.subheader("B. 💡 Code Overview")
                 st.text_area(
-                    "What the image contains:",
-                    value=st.session_state.explanation,
-                    height=150,
+                    "Detailed explanation of what the code does:",
+                    value=st.session_state.overview,
+                    height=200,
                     disabled=True,
-                    key="final_visual_analysis"
+                    key="final_overview"
                 )
                 
-                # Copy explanation button
-                if st.button("📋 Copy Visual Analysis"):
-                    st.code(st.session_state.explanation)
-                    st.success("Visual analysis copied!")
+                if st.button("📋 Copy Code Overview"):
+                    st.code(st.session_state.overview)
+                    st.success("Overview copied!")
             
-            # CodeLlama Code Analysis Section
-            if hasattr(st.session_state, 'code_analysis'):
-                st.subheader("🔍 Code Analysis (CodeLlama)")
+            # C. Line-by-Line Explanation Section
+            if hasattr(st.session_state, 'line_explanation'):
+                st.subheader("C. 🔍 Line-by-Line Code Explanation")
                 st.text_area(
-                    "Code explanation:",
-                    value=st.session_state.code_analysis,
-                    height=250,
+                    "Each line explained with comments:",
+                    value=st.session_state.line_explanation,
+                    height=300,
                     disabled=True,
-                    key="final_code_analysis"
+                    key="final_line_explanation"
                 )
                 
-                # Copy code analysis button
-                if st.button("📋 Copy Code Analysis"):
-                    st.code(st.session_state.code_analysis)
-                    st.success("Code analysis copied!")
+                if st.button("📋 Copy Line Explanations"):
+                    st.code(st.session_state.line_explanation)
+                    st.success("Line explanations copied!")
         else:
             st.info("Upload an image and click 'Process Image' to see results here.")
     
     # Footer
     st.markdown("---")
-    st.markdown("**Note:** Make sure Ollama is running and you have a LLaVA model installed.")
-    st.markdown("Install required models: `ollama pull llama3.2-vision:11b` and `ollama pull codellama:13b`")
+    st.markdown("**Note:** Make sure Ollama is running and you have the required models installed.")
+    st.markdown("Install required models: `ollama pull llama3.2-vision:11b` and `ollama pull deepseek-coder-v2:16b`")
 
 if __name__ == "__main__":
     main()

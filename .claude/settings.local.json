@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(ollama list:*)",
-      "Bash(ollama pull:*)"
+      "Bash(ollama pull:*)",
+      "Bash(ollama ps:*)",
+      "Bash(nvidia-smi:*)",
+      "Bash(python test:*)"
     ],
     "deny": []
   }
