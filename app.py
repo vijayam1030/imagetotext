@@ -12,7 +12,7 @@ def encode_image_to_base64(image):
     img_str = base64.b64encode(buffered.getvalue()).decode()
     return img_str
 
-def extract_text_from_image(image, model_name="llama3.2-vision:11b"):
+def extract_text_from_image(image, model_name="llava:7b"):
     """Extract text from image using Ollama vision model with streaming"""
     try:
         # Convert image to base64
@@ -34,9 +34,10 @@ def extract_text_from_image(image, model_name="llama3.2-vision:11b"):
             ],
             options={
                 'num_gpu': -1,  # Use all available GPUs
-                'num_thread': 4,  # Reduced threads
+                'num_thread': 2,  # Minimal CPU threads to force GPU usage
                 'temperature': 0.1,  # Lower temperature for more accurate text extraction
                 'num_predict': 300,  # Limit response length
+                'num_ctx': 2048,  # Reduce context window for faster processing
             },
             stream=True
         )
@@ -60,7 +61,7 @@ def extract_text_from_image(image, model_name="llama3.2-vision:11b"):
     except Exception as e:
         return f"Error processing image: {str(e)}"
 
-def explain_image_content(image, model_name="llama3.2-vision:11b"):
+def explain_image_content(image, model_name="llava:7b"):
     """Explain what the code/content in the image is doing with streaming"""
     try:
         # Convert image to base64
@@ -82,9 +83,10 @@ def explain_image_content(image, model_name="llama3.2-vision:11b"):
             ],
             options={
                 'num_gpu': -1,  # Use all available GPUs
-                'num_thread': 4,  # Reduced threads
+                'num_thread': 2,  # Minimal CPU threads to force GPU usage
                 'temperature': 0.3,  # Slightly higher temperature for more descriptive explanations
                 'num_predict': 200,  # Limit response length
+                'num_ctx': 2048,  # Reduce context window for faster processing
             },
             stream=True
         )
@@ -133,9 +135,10 @@ Code:
             ],
             options={
                 'num_gpu': -1,
-                'num_thread': 4,  # Reduced threads
+                'num_thread': 2,  # Minimal CPU threads to force GPU usage
                 'temperature': 0.2,
-                'num_predict': 500,  # Limit response length
+                'num_predict': 400,  # Reduced response length
+                'num_ctx': 2048,  # Reduce context window for faster processing
             },
             stream=True
         )
@@ -171,7 +174,7 @@ def main():
     # Sidebar for model selection
     with st.sidebar:
         st.header("Settings")
-        model_options = ["llama3.2-vision:11b", "llama3.2-vision:90b"]
+        model_options = ["llava:7b", "llama3.2-vision:11b", "llama3.2-vision:90b"]
         selected_model = st.selectbox("Select LLaVA Model", model_options)
         
         st.markdown("---")
