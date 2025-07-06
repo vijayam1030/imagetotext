@@ -87,9 +87,9 @@ def get_code_overview(extracted_text):
         stream_placeholder = st.empty()
         full_response = ""
         
-        # Call Ollama API for code overview
+        # Call Ollama API for code overview using DeepSeek
         stream = ollama.chat(
-            model="codellama:13b",
+            model="deepseek-coder-v2:16b",
             messages=[
                 {
                     'role': 'user',
@@ -368,6 +368,7 @@ def main():
     st.markdown("---")
     st.markdown("**Note:** Make sure Ollama is running and you have the required models installed.")
     st.markdown("Install required models: `ollama pull llama3.2-vision:11b` and `ollama pull deepseek-coder-v2:16b`")
+    st.markdown("**Models used:** Llama 3.2 Vision for image extraction, DeepSeek Coder V2 for code analysis")
 
 if __name__ == "__main__":
     main()
