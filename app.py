@@ -42,14 +42,17 @@ def extract_text_from_image(image, model_name="llama3.2-vision:11b"):
         )
         
         # Stream the response
+        chunk_counter = 0
         for chunk in stream:
             if 'message' in chunk and 'content' in chunk['message']:
                 full_response += chunk['message']['content']
+                chunk_counter += 1
                 stream_placeholder.text_area(
                     "Extracted Text (Streaming):",
                     value=full_response,
                     height=150,
-                    disabled=True
+                    disabled=True,
+                    key=f"text_stream_{chunk_counter}"
                 )
         
         return full_response
@@ -87,14 +90,17 @@ def explain_image_content(image, model_name="llama3.2-vision:11b"):
         )
         
         # Stream the response
+        chunk_counter = 0
         for chunk in stream:
             if 'message' in chunk and 'content' in chunk['message']:
                 full_response += chunk['message']['content']
+                chunk_counter += 1
                 stream_placeholder.text_area(
                     "Visual Analysis (Streaming):",
                     value=full_response,
                     height=120,
-                    disabled=True
+                    disabled=True,
+                    key=f"visual_stream_{chunk_counter}"
                 )
         
         return full_response
@@ -108,6 +114,7 @@ def explain_code_with_codellama(extracted_text):
         # Initialize streaming placeholder
         stream_placeholder = st.empty()
         full_response = ""
+        chunk_counter = 0
         
         # Call Ollama API with CodeLlama model using streaming
         stream = ollama.chat(
@@ -137,11 +144,13 @@ Code:
         for chunk in stream:
             if 'message' in chunk and 'content' in chunk['message']:
                 full_response += chunk['message']['content']
+                chunk_counter += 1
                 stream_placeholder.text_area(
                     "CodeLlama Analysis (Streaming):",
                     value=full_response,
                     height=200,
-                    disabled=True
+                    disabled=True,
+                    key=f"codellama_stream_{chunk_counter}"
                 )
         
         return full_response
@@ -189,19 +198,38 @@ def main():
             
             # Extract text button
             if st.button("🔍 Process Image", type="primary"):
-                st.write("📝 **Extracting Text:**")
+                # Create progress bar and status
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                # Step 1: Extract text
+                status_text.text("📝 Extracting text from image... (33%)")
+                progress_bar.progress(33)
                 extracted_text = extract_text_from_image(image, selected_model)
                 st.session_state.extracted_text = extracted_text
                 
-                st.write("💡 **Visual Analysis:**")
+                # Step 2: Visual analysis
+                status_text.text("💡 Analyzing image content... (66%)")
+                progress_bar.progress(66)
                 explanation = explain_image_content(image, selected_model)
                 st.session_state.explanation = explanation
                 
-                # If text was extracted, use CodeLlama for detailed code analysis
+                # Step 3: CodeLlama analysis (if text found)
                 if extracted_text and extracted_text != "No text found":
-                    st.write("🔍 **CodeLlama Analysis:**")
+                    status_text.text("🔍 Analyzing code with CodeLlama... (90%)")
+                    progress_bar.progress(90)
                     code_analysis = explain_code_with_codellama(extracted_text)
                     st.session_state.code_analysis = code_analysis
+                
+                # Complete
+                status_text.text("✅ Processing complete!")
+                progress_bar.progress(100)
+                
+                # Clear progress indicators after a short delay
+                import time
+                time.sleep(1)
+                progress_bar.empty()
+                status_text.empty()
     
     with col2:
         st.header("Results")
@@ -212,7 +240,8 @@ def main():
                 "Extracted Text:",
                 value=st.session_state.extracted_text,
                 height=200,
-                disabled=True
+                disabled=True,
+                key="final_extracted_text"
             )
             
             # Copy text button
@@ -227,7 +256,8 @@ def main():
                     "What the image contains:",
                     value=st.session_state.explanation,
                     height=150,
-                    disabled=True
+                    disabled=True,
+                    key="final_visual_analysis"
                 )
                 
                 # Copy explanation button
@@ -242,7 +272,8 @@ def main():
                     "Code explanation:",
                     value=st.session_state.code_analysis,
                     height=250,
-                    disabled=True
+                    disabled=True,
+                    key="final_code_analysis"
                 )
                 
                 # Copy code analysis button
