@@ -5,7 +5,8 @@
       "Bash(ollama pull:*)",
       "Bash(ollama ps:*)",
       "Bash(nvidia-smi:*)",
-      "Bash(python test:*)"
+      "Bash(python test:*)",
+      "Bash(grep:*)"
     ],
     "deny": []
   }

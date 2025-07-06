@@ -13,93 +13,59 @@ def encode_image_to_base64(image):
     img_str = base64.b64encode(buffered.getvalue()).decode()
     return img_str
 
-def extract_text_from_image(image, model_name="llama3.2-vision:11b"):
-    """Extract text from image using Ollama vision model with streaming"""
+# REMOVED - Using extract_text_fast instead
+
+def extract_text_fast(image, model_name=" llava:13b"):
+    """Fast text extraction without streaming for bulk processing"""
     try:
         # Convert image to base64
         image_b64 = encode_image_to_base64(image)
         
-        # Initialize streaming placeholder
-        stream_placeholder = st.empty()
-        full_response = ""
-        
-        # Call Ollama API for text extraction with streaming
-        stream = ollama.chat(
+        # Call Ollama API without streaming for maximum speed
+        response = ollama.chat(
             model=model_name,
             messages=[
                 {
                     'role': 'user',
-                    'content': 'Carefully examine this entire image from TOP TO BOTTOM and extract ALL text exactly as it appears. Pay special attention to the very top and bottom edges of the image. Include every line of code, comments, imports, headers, and any text that appears anywhere in the image. Do not skip any lines. Return only the text content in the exact order it appears.',
+                    'content': 'You are an expert OCR system. Examine this image and transcribe EVERY character of text you see. Include all code, comments, function names, variable names, strings, numbers, and any written content. Preserve exact spacing, indentation, and line breaks. Start from the very top of the image and work systematically to the bottom. Do not interpret or explain - just transcribe exactly what you see.',
                     'images': [image_b64]
                 }
             ],
             options={
                 'num_gpu': -1,  # Use all available GPUs
-                'num_thread': 2,  # Minimal CPU threads to force GPU usage
-                'temperature': 0.1,  # Lower temperature for more accurate text extraction
-                'num_predict': 300,  # Limit response length
-                'num_ctx': 2048,  # Reduce context window for faster processing
+                'num_thread': 1,  # Single thread for faster processing
+                'temperature': 0.0,  # Deterministic output
+                'num_predict': 500,  # Limit response length
+                'num_ctx': 1024,  # Smaller context for speed
+                'top_p': 0.9,  # Focus on high probability tokens
+                'repeat_penalty': 1.1,  # Avoid repetition
             },
-            stream=True
+            stream=False  # NO STREAMING = MUCH FASTER
         )
         
-        # Stream the response
-        chunk_counter = 0
-        for chunk in stream:
-            if 'message' in chunk and 'content' in chunk['message']:
-                full_response += chunk['message']['content']
-                chunk_counter += 1
-                
-                # Update streaming display
-                stream_placeholder.text_area(
-                    "Extracted Text:",
-                    value=full_response,
-                    height=150,
-                    disabled=True,
-                    key=f"text_stream_{chunk_counter}"
-                )
-                
-                # Auto-scroll JavaScript injection
-                st.markdown(f"""
-                <script>
-                setTimeout(function() {{
-                    var textAreas = document.querySelectorAll('textarea');
-                    if (textAreas.length > 0) {{
-                        var lastTextArea = textAreas[textAreas.length - 1];
-                        lastTextArea.scrollTop = lastTextArea.scrollHeight;
-                    }}
-                }}, 50);
-                </script>
-                """, unsafe_allow_html=True)
-                
-                # Small delay for smoother animation
-                time.sleep(0.05)
-        
-        return full_response
+        return response['message']['content']
     
     except Exception as e:
         return f"Error processing image: {str(e)}"
 
-def get_code_overview(extracted_text):
-    """Get detailed overview of what the code does"""
+# REMOVED - Using get_code_overview_fast instead
+
+# REMOVED - Using explain_code_fast instead
+
+def get_code_overview_fast(extracted_text):
+    """Fast code overview without streaming"""
     try:
-        # Initialize streaming placeholder
-        stream_placeholder = st.empty()
-        full_response = ""
-        
-        # Call Ollama API for code overview using DeepSeek
-        stream = ollama.chat(
+        response = ollama.chat(
             model="deepseek-coder-v2:16b",
             messages=[
                 {
                     'role': 'user',
-                    'content': f'''Analyze this code and provide a detailed overview of what it does:
+                    'content': f'''Analyze this code and provide a detailed overview:
 
-1. What is the main purpose of this code?
-2. What programming language is it?
-3. What are the key functions/methods?
-4. What does the code accomplish?
-5. Any important algorithms or patterns used?
+1. Main purpose and functionality
+2. Programming language and key components
+3. Important functions/methods
+4. Overall architecture
 
 Code:
 {extracted_text}'''
@@ -107,127 +73,54 @@ Code:
             ],
             options={
                 'num_gpu': -1,
-                'num_thread': 2,
-                'temperature': 0.2,
-                'num_predict': 600,
+                'num_thread': 1,
+                'temperature': 0.1,
+                'num_predict': 800,
                 'num_ctx': 2048,
+                'top_p': 0.9,
             },
-            stream=True
+            stream=False
         )
-        
-        # Stream the response
-        chunk_counter = 0
-        for chunk in stream:
-            if 'message' in chunk and 'content' in chunk['message']:
-                full_response += chunk['message']['content']
-                chunk_counter += 1
-                
-                # Update streaming display
-                stream_placeholder.text_area(
-                    "Code Overview:",
-                    value=full_response,
-                    height=200,
-                    disabled=True,
-                    key=f"overview_stream_{chunk_counter}"
-                )
-                
-                # Auto-scroll JavaScript injection
-                st.markdown(f"""
-                <script>
-                setTimeout(function() {{
-                    var textAreas = document.querySelectorAll('textarea');
-                    if (textAreas.length > 0) {{
-                        var lastTextArea = textAreas[textAreas.length - 1];
-                        lastTextArea.scrollTop = lastTextArea.scrollHeight;
-                    }}
-                }}, 50);
-                </script>
-                """, unsafe_allow_html=True)
-                
-                # Small delay for smoother animation
-                time.sleep(0.05)
-        
-        return full_response
-    
+        return response['message']['content']
     except Exception as e:
         return f"Error getting code overview: {str(e)}"
 
-def explain_code_with_codellama(extracted_text):
-    """Use CodeLlama to explain code line by line with streaming"""
+def explain_code_fast(extracted_text):
+    """Fast line-by-line explanation without streaming"""
     try:
-        # Initialize streaming placeholder
-        stream_placeholder = st.empty()
-        full_response = ""
-        chunk_counter = 0
-        
-        # Call Ollama API with DeepSeek Coder model using streaming
-        stream = ollama.chat(
+        response = ollama.chat(
             model="deepseek-coder-v2:16b",
             messages=[
                 {
                     'role': 'user',
-                    'content': f'''Explain this code line by line. For each line, provide:
-1. The original code line
-2. A detailed comment explaining what that line does
+                    'content': f'''Explain this code line by line with detailed comments:
 
-Format like this:
+Format:
 ```
 // Comment explaining what this line does
-original code line
+code line
 
 // Comment explaining what this line does  
-original code line
+code line
 ```
 
-Code to analyze:
+Code:
 {extracted_text}'''
                 }
             ],
             options={
                 'num_gpu': -1,
-                'num_thread': 2,  # Minimal CPU threads to force GPU usage
-                'temperature': 0.2,
-                'num_predict': 400,  # Reduced response length
-                'num_ctx': 2048,  # Reduce context window for faster processing
+                'num_thread': 1,
+                'temperature': 0.1,
+                'num_predict': 1500,
+                'num_ctx': 2048,
+                'top_p': 0.9,
             },
-            stream=True
+            stream=False
         )
-        
-        # Stream the response
-        for chunk in stream:
-            if 'message' in chunk and 'content' in chunk['message']:
-                full_response += chunk['message']['content']
-                chunk_counter += 1
-                
-                # Update streaming display
-                stream_placeholder.text_area(
-                    "Line-by-Line Explanation:",
-                    value=full_response,
-                    height=300,
-                    disabled=True,
-                    key=f"linebyline_stream_{chunk_counter}"
-                )
-                
-                # Auto-scroll JavaScript injection
-                st.markdown(f"""
-                <script>
-                setTimeout(function() {{
-                    var textAreas = document.querySelectorAll('textarea');
-                    if (textAreas.length > 0) {{
-                        var lastTextArea = textAreas[textAreas.length - 1];
-                        lastTextArea.scrollTop = lastTextArea.scrollHeight;
-                    }}
-                }}, 50);
-                </script>
-                """, unsafe_allow_html=True)
-                
-                # Small delay for smoother animation
-                time.sleep(0.05)
-        
-        return full_response
-    
+        return response['message']['content']
     except Exception as e:
-        return f"Error explaining code line by line: {str(e)}"
+        return f"Error explaining code: {str(e)}"
 
 def main():
     st.set_page_config(
@@ -242,82 +135,167 @@ def main():
     # Sidebar for model selection
     with st.sidebar:
         st.header("Settings")
-        model_options = ["llama3.2-vision:11b"]
+        model_options = ["llava:13b",  "deepseek-v3"]
         selected_model = st.selectbox("Select Vision Model", model_options)
         
         st.markdown("---")
         st.markdown("**Instructions:**")
-        st.markdown("1. Upload an image file")
-        st.markdown("2. Click 'Process Image' button")
-        st.markdown("3. View text and explanation")
+        st.markdown("1. Upload one or multiple image files")
+        st.markdown("2. Click 'Process All Images' button")
+        st.markdown("3. View extracted text and AI analysis")
+        st.markdown("4. Copy results as needed")
     
     # Main content area
     col1, col2 = st.columns([1, 1])
     
     with col1:
         st.header("Upload Image")
-        uploaded_file = st.file_uploader(
-            "Choose an image file",
+        uploaded_files = st.file_uploader(
+            "Choose image files",
             type=['png', 'jpg', 'jpeg', 'gif', 'bmp'],
-            accept_multiple_files=False
+            accept_multiple_files=True
         )
         
-        if uploaded_file is not None:
-            # Display uploaded image
-            image = Image.open(uploaded_file)
-            st.image(image, caption="Uploaded Image", use_column_width=True)
+        if uploaded_files:
+            # Show all uploaded files
+            st.write(f"📁 **{len(uploaded_files)} file(s) uploaded:**")
+            for file in uploaded_files:
+                st.write(f"📄 {file.name}")
             
-            # Extract text button
-            if st.button("🔍 Process Image", type="primary"):
-                # Create progress bar and status
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-                
-                # Create containers for streaming outputs
+            # Display first image as preview
+            image = Image.open(uploaded_files[0])
+            st.image(image, caption=f"Preview: {uploaded_files[0].name}", use_column_width=True)
+            
+            # Single process button
+            if st.button("🚀 Process All Images", type="primary"):
+                # Performance-optimized processing
                 st.write("---")
-                st.subheader("🔄 Live Processing")
+                st.subheader("🚀 Processing All Images")
                 
-                text_container = st.container()
-                visual_container = st.container()  
-                code_container = st.container()
+                # Step 1: Extract text from ALL images efficiently
+                st.write("📝 **Step 1: Extracting text from all images...**")
+                all_extracted_texts = []
+                extraction_progress = st.progress(0)
+                extraction_status = st.empty()
                 
-                # Step 1: Extract text
-                status_text.text("📝 Extracting text from image... (33%)")
-                progress_bar.progress(33)
-                with text_container:
-                    st.write("📝 **Text Extraction:**")
-                    extracted_text = extract_text_from_image(image, selected_model)
-                    st.session_state.extracted_text = extracted_text
-                
-                # Step 2: Code overview (if text found)
-                if extracted_text and extracted_text != "No text found":
-                    status_text.text("💡 Getting code overview... (66%)")
-                    progress_bar.progress(66)
-                    with visual_container:
-                        st.write("💡 **Code Overview:**")
-                        overview = get_code_overview(extracted_text)
-                        st.session_state.overview = overview
+                # Process images efficiently without streaming for speed
+                for idx, file in enumerate(uploaded_files):
+                    extraction_status.text(f"📷 Extracting text from {file.name} ({idx+1}/{len(uploaded_files)})...")
+                    extraction_progress.progress((idx + 1) / len(uploaded_files))
                     
-                    # Step 3: Line-by-line explanation
-                    status_text.text("🔍 Explaining code line by line... (90%)")
-                    progress_bar.progress(90)
-                    with code_container:
-                        st.write("🔍 **Line-by-Line Explanation:**")
-                        line_explanation = explain_code_with_codellama(extracted_text)
-                        st.session_state.line_explanation = line_explanation
+                    img = Image.open(file)
+                    extracted_text = extract_text_fast(img, selected_model)
+                    
+                    if extracted_text and extracted_text != "No text found":
+                        all_extracted_texts.append({
+                            'filename': file.name,
+                            'text': extracted_text
+                        })
                 
-                # Complete
-                status_text.text("✅ Processing complete!")
-                progress_bar.progress(100)
+                extraction_progress.empty()
+                extraction_status.empty()
                 
-                # Clear progress indicators after a short delay
-                time.sleep(1)
-                progress_bar.empty()
-                status_text.empty()
+                # Step 2: Process all extracted text efficiently
+                if all_extracted_texts:
+                    st.write("🔗 **Step 2: Combining and analyzing all code...**")
+                    
+                    # Create combined text with file separators
+                    combined_text = ""
+                    individual_texts_display = ""
+                    
+                    for item in all_extracted_texts:
+                        combined_text += f"// ===== FILE: {item['filename']} =====\n"
+                        combined_text += item['text'] + "\n\n"
+                        
+                        # For display purposes
+                        individual_texts_display += f"📄 **{item['filename']}:**\n"
+                        individual_texts_display += item['text'] + "\n" + "="*50 + "\n\n"
+                    
+                    # Store results
+                    st.session_state.all_individual_texts = all_extracted_texts
+                    st.session_state.combined_extracted_text = combined_text
+                    st.session_state.individual_texts_display = individual_texts_display
+                    
+                    # Step 3: Get code overview efficiently
+                    analysis_progress = st.progress(0)
+                    analysis_status = st.empty()
+                    
+                    analysis_status.text("💡 Analyzing combined code overview...")
+                    analysis_progress.progress(50)
+                    combined_overview = get_code_overview_fast(combined_text)
+                    st.session_state.combined_overview = combined_overview
+                    
+                    # Step 4: Get line-by-line explanation efficiently
+                    analysis_status.text("🔍 Generating line-by-line explanations...")
+                    analysis_progress.progress(100)
+                    combined_line_explanation = explain_code_fast(combined_text)
+                    st.session_state.combined_line_explanation = combined_line_explanation
+                    
+                    analysis_progress.empty()
+                    analysis_status.empty()
+                    
+                    st.success(f"✅ Successfully processed {len(all_extracted_texts)} images with optimized performance!")
+                else:
+                    st.error("❌ No text found in any of the uploaded images.")
     
     with col2:
         st.header("Final Results")
-        if hasattr(st.session_state, 'extracted_text'):
+        
+        # Show results for processed images
+        if hasattr(st.session_state, 'combined_extracted_text'):
+            # Show file summary
+            if hasattr(st.session_state, 'all_individual_texts'):
+                st.subheader(f"📁 Processed {len(st.session_state.all_individual_texts)} Images")
+                for idx, item in enumerate(st.session_state.all_individual_texts, 1):
+                    st.write(f"{idx}. 📄 {item['filename']}")
+                st.write("---")
+            
+            # A. Text Extraction (Individual Files)
+            st.subheader("A. 📝 Text Extraction by File")
+            if hasattr(st.session_state, 'individual_texts_display'):
+                st.text_area(
+                    "Extracted text from each image:",
+                    value=st.session_state.individual_texts_display,
+                    height=300,
+                    disabled=True,
+                    key="individual_texts_display"
+                )
+                
+                if st.button("📋 Copy Individual Texts"):
+                    st.code(st.session_state.individual_texts_display)
+                    st.success("Individual texts copied!")
+            
+            # B. Code Overview (All Combined)
+            if hasattr(st.session_state, 'combined_overview'):
+                st.subheader("B. 💡 Complete Code Overview")
+                st.text_area(
+                    "Overall analysis of all code together:",
+                    value=st.session_state.combined_overview,
+                    height=200,
+                    disabled=True,
+                    key="combined_overview"
+                )
+                
+                if st.button("📋 Copy Overview"):
+                    st.code(st.session_state.combined_overview)
+                    st.success("Overview copied!")
+            
+            # C. Line-by-Line Comments (All Combined)
+            if hasattr(st.session_state, 'combined_line_explanation'):
+                st.subheader("C. 🔍 Line-by-Line Comments")
+                st.text_area(
+                    "Detailed comments for all code:",
+                    value=st.session_state.combined_line_explanation,
+                    height=400,
+                    disabled=True,
+                    key="combined_line_explanation"
+                )
+                
+                if st.button("📋 Copy All Comments"):
+                    st.code(st.session_state.combined_line_explanation)
+                    st.success("All comments copied!")
+        
+        elif hasattr(st.session_state, 'extracted_text'):
             # A. Text Extraction Section
             st.subheader("A. 📝 Text Extraction")
             st.text_area(
@@ -367,8 +345,12 @@ def main():
     # Footer
     st.markdown("---")
     st.markdown("**Note:** Make sure Ollama is running and you have the required models installed.")
-    st.markdown("Install required models: `ollama pull llama3.2-vision:11b` and `ollama pull deepseek-coder-v2:16b`")
-    st.markdown("**Models used:** Llama 3.2 Vision for image extraction, DeepSeek Coder V2 for code analysis")
+    st.markdown("Install required models:")
+    st.markdown("• `ollama pull llava:13b` (recommended for accuracy)")
+    st.markdown("• `ollama pull llava:34b` (best accuracy, slower)")
+    st.markdown("• `ollama pull deepseek-v3` (latest)")
+    st.markdown("• `ollama pull deepseek-coder-v2:16b` (for code analysis)")
+    st.markdown("**Models used:** LLaVA for image extraction, DeepSeek for code analysis")
 
 if __name__ == "__main__":
     main()
