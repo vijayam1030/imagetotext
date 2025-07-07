@@ -66,7 +66,7 @@ def extract_text_with_ocr(image):
     except Exception as e:
         return f"OCR Error: {str(e)}"
 
-def extract_text_fast(image, model_name="llama3.2-vision:11b"):
+def extract_text_fast(image):
     """Tesseract OCR with vision model fallback"""
     try:
         # Primary: Use Tesseract OCR
@@ -97,7 +97,7 @@ Extract the text:"""
             
             # Call vision model with optimized parameters for speed
             response = ollama.chat(
-                model=model_name,
+                model="llama3.2-vision:11b",
                 messages=[
                     {
                         'role': 'user',
@@ -215,11 +215,6 @@ def main():
     with st.sidebar:
         st.header("Model Settings")
         
-        # Vision model selection
-        st.subheader("🔍 Text Extraction Model")
-        vision_model_options = ["llama3.2-vision:11b", "llava:13b", "llava:7b"]
-        selected_vision_model = st.selectbox("Select Vision Model", vision_model_options, key="vision_model")
-        
         # Code analysis model selection
         st.subheader("💻 Code Analysis Model")
         code_model_options = [
@@ -235,9 +230,8 @@ def main():
         
         st.markdown("---")
         st.markdown("**Model Usage:**")
-        st.markdown("• **Tesseract OCR**: Primary text extraction")
-        st.markdown("• **Vision**: Fallback for OCR failures")
-        st.markdown("• **Code**: Analyzes and explains code")
+        st.markdown("• **Tesseract OCR**: Fast text extraction")
+        st.markdown("• **Code Model**: Analyzes and explains code")
         
         st.markdown("---")
         st.markdown("**Instructions:**")
@@ -267,14 +261,17 @@ def main():
             image = Image.open(uploaded_files[0])
             st.image(image, caption=f"Preview: {uploaded_files[0].name}", use_column_width=True)
             
-            # Separate buttons for extraction and analysis
-            col_btn1, col_btn2 = st.columns([1, 1])
+            # Buttons for different processing options
+            col_btn1, col_btn2, col_btn3 = st.columns([1, 1, 1])
             
             with col_btn1:
-                extract_button = st.button("📸 Extract Text Only", type="primary")
+                extract_button = st.button("📸 Extract Text Only", type="secondary")
             
             with col_btn2:
                 analyze_button = st.button("🔍 Analyze Extracted Text", type="secondary")
+            
+            with col_btn3:
+                process_all_button = st.button("🚀 Extract & Analyze All", type="primary")
             
             if extract_button:
                 # Text extraction only
@@ -290,7 +287,7 @@ def main():
                     extraction_progress.progress((idx + 1) / len(uploaded_files))
                     
                     img = Image.open(file)
-                    extracted_text = extract_text_fast(img, selected_vision_model)
+                    extracted_text = extract_text_fast(img)
                     
                     if extracted_text and extracted_text != "No text found":
                         all_extracted_texts.append({
@@ -359,6 +356,72 @@ def main():
                     st.success(f"✅ Analysis completed using {selected_code_model}!")
                 else:
                     st.error("❌ No extracted text found! Please run 'Extract Text Only' first.")
+                    
+            elif process_all_button:
+                # Combined extraction and analysis in one go
+                st.write("---")
+                st.subheader("🚀 Processing All Images (Extract & Analyze)")
+                all_extracted_texts = []
+                
+                # Overall progress tracking
+                total_steps = len(uploaded_files) + 2  # images + overview + explanation
+                overall_progress = st.progress(0)
+                overall_status = st.empty()
+                
+                # Step 1: Extract text from all images
+                overall_status.text("📸 Extracting text from all images...")
+                for idx, file in enumerate(uploaded_files):
+                    overall_status.text(f"📷 Extracting text from {file.name} ({idx+1}/{len(uploaded_files)})...")
+                    overall_progress.progress((idx + 1) / total_steps)
+                    
+                    img = Image.open(file)
+                    extracted_text = extract_text_fast(img)
+                    
+                    if extracted_text and extracted_text != "No text found":
+                        all_extracted_texts.append({
+                            'filename': file.name,
+                            'text': extracted_text
+                        })
+                
+                if all_extracted_texts:
+                    # Create combined text with file separators
+                    combined_text = ""
+                    individual_texts_display = ""
+                    
+                    for item in all_extracted_texts:
+                        combined_text += f"// ===== FILE: {item['filename']} =====\n"
+                        combined_text += item['text'] + "\n\n"
+                        
+                        # For display purposes
+                        individual_texts_display += f"📄 **{item['filename']}:**\n"
+                        individual_texts_display += item['text'] + "\n" + "="*50 + "\n\n"
+                    
+                    # Store extraction results
+                    st.session_state.all_individual_texts = all_extracted_texts
+                    st.session_state.combined_extracted_text = combined_text
+                    st.session_state.individual_texts_display = individual_texts_display
+                    
+                    # Step 2: Get code overview
+                    overall_status.text(f"💡 Analyzing code overview with {selected_code_model}...")
+                    overall_progress.progress((len(uploaded_files) + 1) / total_steps)
+                    combined_overview = get_code_overview_fast(combined_text, selected_code_model)
+                    st.session_state.combined_overview = combined_overview
+                    
+                    # Step 3: Get line-by-line explanation
+                    overall_status.text(f"🔍 Generating line-by-line explanations with {selected_code_model}...")
+                    overall_progress.progress((len(uploaded_files) + 2) / total_steps)
+                    combined_line_explanation = explain_code_fast(combined_text, selected_code_model)
+                    st.session_state.combined_line_explanation = combined_line_explanation
+                    
+                    overall_progress.progress(1.0)
+                    overall_progress.empty()
+                    overall_status.empty()
+                    
+                    st.success(f"✅ Completed! Extracted text from {len(all_extracted_texts)} images and analyzed with {selected_code_model}!")
+                else:
+                    overall_progress.empty()
+                    overall_status.empty()
+                    st.error("❌ No text found in any of the uploaded images.")
     
     with col2:
         st.header("Final Results")
@@ -466,13 +529,12 @@ def main():
     
     # Footer
     st.markdown("---")
-    st.markdown("**Note:** Make sure Ollama is running and you have the required models installed.")
-    st.markdown("Install required models:")
-    st.markdown("• `ollama pull llava:13b` (recommended for accuracy)")
-    st.markdown("• `ollama pull llava:34b` (best accuracy, slower)")
-    st.markdown("• `ollama pull deepseek-v3` (latest)")
-    st.markdown("• `ollama pull deepseek-coder-v2:16b` (for code analysis)")
-    st.markdown("**Models used:** Tesseract OCR for primary extraction, LLaVA for fallback, DeepSeek for code analysis")
+    st.markdown("**Note:** Make sure Ollama is running and you have the required code analysis models installed.")
+    st.markdown("Install code analysis models:")
+    st.markdown("• `ollama pull qwen2.5-coder:1.5b` (fast and efficient)")
+    st.markdown("• `ollama pull deepseek-coder-v2:16b` (best for code analysis)")
+    st.markdown("• `ollama pull deepseek-r1:1.5b` (latest reasoning model)")
+    st.markdown("**Models used:** Tesseract OCR for text extraction, selected model for code analysis")
 
 if __name__ == "__main__":
     main()
