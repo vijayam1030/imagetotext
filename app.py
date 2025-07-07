@@ -5,6 +5,9 @@ import io
 from PIL import Image
 import ollama
 import time
+import pytesseract
+import cv2
+import numpy as np
 
 def encode_image_to_base64(image):
     """Convert PIL image to base64 string"""
@@ -15,35 +18,107 @@ def encode_image_to_base64(image):
 
 # REMOVED - Using extract_text_fast instead
 
-def extract_text_fast(image, model_name=" llava:13b"):
-    """Fast text extraction without streaming for bulk processing"""
+def preprocess_image_for_ocr(image):
+    """Preprocess image for better OCR accuracy"""
+    try:
+        # Convert PIL image to numpy array
+        img_array = np.array(image)
+        
+        # Convert to grayscale if needed
+        if len(img_array.shape) == 3:
+            gray = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
+        else:
+            gray = img_array
+        
+        # Apply image processing for better OCR
+        # Increase contrast
+        enhanced = cv2.convertScaleAbs(gray, alpha=1.5, beta=0)
+        
+        # Denoise
+        denoised = cv2.fastNlMeansDenoising(enhanced)
+        
+        # Resize if image is too small (OCR works better on larger images)
+        height, width = denoised.shape
+        if height < 300 or width < 300:
+            scale_factor = max(300/height, 300/width)
+            new_height = int(height * scale_factor)
+            new_width = int(width * scale_factor)
+            denoised = cv2.resize(denoised, (new_width, new_height), interpolation=cv2.INTER_CUBIC)
+        
+        return denoised
+    except Exception as e:
+        # Return original image as numpy array if preprocessing fails
+        return np.array(image.convert('L'))
+
+def extract_text_with_ocr(image):
+    """Extract text using Tesseract OCR"""
+    try:
+        # Preprocess image
+        processed_img = preprocess_image_for_ocr(image)
+        
+        # Configure Tesseract for code/text recognition
+        custom_config = r'--oem 3 --psm 6'
+        
+        # Extract text using Tesseract
+        ocr_text = pytesseract.image_to_string(processed_img, config=custom_config)
+        
+        return ocr_text.strip()
+    except Exception as e:
+        return f"OCR Error: {str(e)}"
+
+def extract_text_fast(image, model_name="llama3.2-vision:11b"):
+    """Fast vision model with OCR fallback for accuracy"""
     try:
         # Convert image to base64
         image_b64 = encode_image_to_base64(image)
         
-        # Call Ollama API without streaming for maximum speed
+        # Enhanced prompt for better text extraction
+        prompt = """You are a precise OCR system. Look at this image and extract ALL visible text exactly as it appears.
+
+INSTRUCTIONS:
+1. Read every character, word, and line of text in the image
+2. Copy the text EXACTLY - do not change, interpret, or explain anything
+3. Maintain original formatting, spacing, indentation, and line breaks
+4. Include ALL text: code, comments, file names, error messages, UI text, etc.
+5. If you see programming code, copy it character-for-character
+6. Start from top-left, work systematically to bottom-right
+7. Do NOT add your own commentary or explanations
+
+Extract the text:"""
+        
+        # Call vision model with optimized parameters for speed
         response = ollama.chat(
             model=model_name,
             messages=[
                 {
                     'role': 'user',
-                    'content': 'You are an expert OCR system. Examine this image and transcribe EVERY character of text you see. Include all code, comments, function names, variable names, strings, numbers, and any written content. Preserve exact spacing, indentation, and line breaks. Start from the very top of the image and work systematically to the bottom. Do not interpret or explain - just transcribe exactly what you see.',
+                    'content': prompt,
                     'images': [image_b64]
                 }
             ],
             options={
-                'num_gpu': -1,  # Use all available GPUs
-                'num_thread': 1,  # Single thread for faster processing
-                'temperature': 0.0,  # Deterministic output
-                'num_predict': 500,  # Limit response length
-                'num_ctx': 1024,  # Smaller context for speed
-                'top_p': 0.9,  # Focus on high probability tokens
-                'repeat_penalty': 1.1,  # Avoid repetition
+                'num_gpu': -1,
+                'num_thread': 1,
+                'temperature': 0.0,  # Most deterministic
+                'num_predict': 800,   # Reduced for speed
+                'num_ctx': 1024,
+                'top_p': 0.1,  # Very focused
+                'repeat_penalty': 1.0,  # No penalty to allow exact repetition
             },
-            stream=False  # NO STREAMING = MUCH FASTER
+            stream=False
         )
         
-        return response['message']['content']
+        vision_result = response['message']['content']
+        
+        # OCR fallback disabled - using vision model only for now
+        # To enable OCR: install Tesseract and uncomment the code below
+        # if (not vision_result or len(vision_result.strip()) < 10):
+        #     try:
+        #         ocr_result = extract_text_with_ocr(image)
+        #         if ocr_result: return f"OCR: {ocr_result}"
+        #     except: pass
+                
+        return vision_result
     
     except Exception as e:
         return f"Error processing image: {str(e)}"
@@ -52,11 +127,11 @@ def extract_text_fast(image, model_name=" llava:13b"):
 
 # REMOVED - Using explain_code_fast instead
 
-def get_code_overview_fast(extracted_text):
+def get_code_overview_fast(extracted_text, model_name="qwen2.5-coder:1.5b"):
     """Fast code overview without streaming"""
     try:
         response = ollama.chat(
-            model="deepseek-coder-v2:16b",
+            model=model_name,
             messages=[
                 {
                     'role': 'user',
@@ -85,11 +160,11 @@ Code:
     except Exception as e:
         return f"Error getting code overview: {str(e)}"
 
-def explain_code_fast(extracted_text):
+def explain_code_fast(extracted_text, model_name="qwen2.5-coder:1.5b"):
     """Fast line-by-line explanation without streaming"""
     try:
         response = ollama.chat(
-            model="deepseek-coder-v2:16b",
+            model=model_name,
             messages=[
                 {
                     'role': 'user',
@@ -134,9 +209,22 @@ def main():
     
     # Sidebar for model selection
     with st.sidebar:
-        st.header("Settings")
-        model_options = ["llava:13b",  "deepseek-v3"]
-        selected_model = st.selectbox("Select Vision Model", model_options)
+        st.header("Model Settings")
+        
+        # Vision model selection
+        st.subheader("🔍 Text Extraction Model")
+        vision_model_options = ["llama3.2-vision:11b", "llava:13b", "llava:7b"]
+        selected_vision_model = st.selectbox("Select Vision Model", vision_model_options, key="vision_model")
+        
+        # Code analysis model selection
+        st.subheader("💻 Code Analysis Model")
+        code_model_options = ["qwen2.5-coder:1.5b", "qwen2.5-coder:3b", "qwen2.5:14b", "codellama:13b", "llama3.1:8b"]
+        selected_code_model = st.selectbox("Select Code Model", code_model_options, key="code_model")
+        
+        st.markdown("---")
+        st.markdown("**Model Usage:**")
+        st.markdown("• **Vision**: Extracts text from images")
+        st.markdown("• **Code**: Analyzes and explains code")
         
         st.markdown("---")
         st.markdown("**Instructions:**")
@@ -184,7 +272,7 @@ def main():
                     extraction_progress.progress((idx + 1) / len(uploaded_files))
                     
                     img = Image.open(file)
-                    extracted_text = extract_text_fast(img, selected_model)
+                    extracted_text = extract_text_fast(img, selected_vision_model)
                     
                     if extracted_text and extracted_text != "No text found":
                         all_extracted_texts.append({
@@ -222,13 +310,13 @@ def main():
                     
                     analysis_status.text("💡 Analyzing combined code overview...")
                     analysis_progress.progress(50)
-                    combined_overview = get_code_overview_fast(combined_text)
+                    combined_overview = get_code_overview_fast(combined_text, selected_code_model)
                     st.session_state.combined_overview = combined_overview
                     
                     # Step 4: Get line-by-line explanation efficiently
                     analysis_status.text("🔍 Generating line-by-line explanations...")
                     analysis_progress.progress(100)
-                    combined_line_explanation = explain_code_fast(combined_text)
+                    combined_line_explanation = explain_code_fast(combined_text, selected_code_model)
                     st.session_state.combined_line_explanation = combined_line_explanation
                     
                     analysis_progress.empty()
