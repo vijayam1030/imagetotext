@@ -67,13 +67,22 @@ def extract_text_with_ocr(image):
         return f"OCR Error: {str(e)}"
 
 def extract_text_fast(image, model_name="llama3.2-vision:11b"):
-    """Fast vision model with OCR fallback for accuracy"""
+    """Tesseract OCR with vision model fallback"""
     try:
-        # Convert image to base64
-        image_b64 = encode_image_to_base64(image)
+        # Primary: Use Tesseract OCR
+        ocr_result = extract_text_with_ocr(image)
         
-        # Enhanced prompt for better text extraction
-        prompt = """You are a precise OCR system. Look at this image and extract ALL visible text exactly as it appears.
+        # Check if OCR produced good results
+        if ocr_result and not ocr_result.startswith("OCR Error:") and len(ocr_result.strip()) > 5:
+            return ocr_result
+        
+        # Fallback: Use vision model if OCR fails or produces minimal text
+        try:
+            # Convert image to base64
+            image_b64 = encode_image_to_base64(image)
+            
+            # Enhanced prompt for better text extraction
+            prompt = """You are a precise OCR system. Look at this image and extract ALL visible text exactly as it appears.
 
 INSTRUCTIONS:
 1. Read every character, word, and line of text in the image
@@ -85,40 +94,35 @@ INSTRUCTIONS:
 7. Do NOT add your own commentary or explanations
 
 Extract the text:"""
-        
-        # Call vision model with optimized parameters for speed
-        response = ollama.chat(
-            model=model_name,
-            messages=[
-                {
-                    'role': 'user',
-                    'content': prompt,
-                    'images': [image_b64]
-                }
-            ],
-            options={
-                'num_gpu': -1,
-                'num_thread': 1,
-                'temperature': 0.0,  # Most deterministic
-                'num_predict': 800,   # Reduced for speed
-                'num_ctx': 1024,
-                'top_p': 0.1,  # Very focused
-                'repeat_penalty': 1.0,  # No penalty to allow exact repetition
-            },
-            stream=False
-        )
-        
-        vision_result = response['message']['content']
-        
-        # OCR fallback disabled - using vision model only for now
-        # To enable OCR: install Tesseract and uncomment the code below
-        # if (not vision_result or len(vision_result.strip()) < 10):
-        #     try:
-        #         ocr_result = extract_text_with_ocr(image)
-        #         if ocr_result: return f"OCR: {ocr_result}"
-        #     except: pass
-                
-        return vision_result
+            
+            # Call vision model with optimized parameters for speed
+            response = ollama.chat(
+                model=model_name,
+                messages=[
+                    {
+                        'role': 'user',
+                        'content': prompt,
+                        'images': [image_b64]
+                    }
+                ],
+                options={
+                    'num_gpu': -1,
+                    'num_thread': 1,
+                    'temperature': 0.0,  # Most deterministic
+                    'num_predict': 800,   # Reduced for speed
+                    'num_ctx': 1024,
+                    'top_p': 0.1,  # Very focused
+                    'repeat_penalty': 1.0,  # No penalty to allow exact repetition
+                },
+                stream=False
+            )
+            
+            vision_result = response['message']['content']
+            return f"Vision fallback: {vision_result}"
+            
+        except Exception as vision_error:
+            # If both OCR and vision fail, return OCR error (it was tried first)
+            return ocr_result if ocr_result else f"Error: OCR failed and vision model unavailable ({str(vision_error)})"
     
     except Exception as e:
         return f"Error processing image: {str(e)}"
@@ -205,7 +209,7 @@ def main():
     )
     
     st.title("📸 Image to Text Extractor")
-    st.markdown("Upload an image and extract text using LLaVA vision model")
+    st.markdown("Upload an image and extract text using Tesseract OCR with vision model fallback")
     
     # Sidebar for model selection
     with st.sidebar:
@@ -231,7 +235,8 @@ def main():
         
         st.markdown("---")
         st.markdown("**Model Usage:**")
-        st.markdown("• **Vision**: Extracts text from images")
+        st.markdown("• **Tesseract OCR**: Primary text extraction")
+        st.markdown("• **Vision**: Fallback for OCR failures")
         st.markdown("• **Code**: Analyzes and explains code")
         
         st.markdown("---")
@@ -467,7 +472,7 @@ def main():
     st.markdown("• `ollama pull llava:34b` (best accuracy, slower)")
     st.markdown("• `ollama pull deepseek-v3` (latest)")
     st.markdown("• `ollama pull deepseek-coder-v2:16b` (for code analysis)")
-    st.markdown("**Models used:** LLaVA for image extraction, DeepSeek for code analysis")
+    st.markdown("**Models used:** Tesseract OCR for primary extraction, LLaVA for fallback, DeepSeek for code analysis")
 
 if __name__ == "__main__":
     main()
