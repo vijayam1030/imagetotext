@@ -218,7 +218,15 @@ def main():
         
         # Code analysis model selection
         st.subheader("💻 Code Analysis Model")
-        code_model_options = ["qwen2.5-coder:1.5b", "qwen2.5-coder:3b", "qwen2.5:14b", "codellama:13b", "llama3.1:8b"]
+        code_model_options = [
+            "qwen2.5-coder:1.5b", 
+            "qwen2.5-coder:3b", 
+            "deepseek-r1:1.5b",
+            "deepseek-coder-v2:16b",
+            "qwen2.5:14b", 
+            "codellama:13b", 
+            "llama3.1:8b"
+        ]
         selected_code_model = st.selectbox("Select Code Model", code_model_options, key="code_model")
         
         st.markdown("---")
@@ -254,14 +262,19 @@ def main():
             image = Image.open(uploaded_files[0])
             st.image(image, caption=f"Preview: {uploaded_files[0].name}", use_column_width=True)
             
-            # Single process button
-            if st.button("🚀 Process All Images", type="primary"):
-                # Performance-optimized processing
+            # Separate buttons for extraction and analysis
+            col_btn1, col_btn2 = st.columns([1, 1])
+            
+            with col_btn1:
+                extract_button = st.button("📸 Extract Text Only", type="primary")
+            
+            with col_btn2:
+                analyze_button = st.button("🔍 Analyze Extracted Text", type="secondary")
+            
+            if extract_button:
+                # Text extraction only
                 st.write("---")
-                st.subheader("🚀 Processing All Images")
-                
-                # Step 1: Extract text from ALL images efficiently
-                st.write("📝 **Step 1: Extracting text from all images...**")
+                st.subheader("📸 Extracting Text from Images")
                 all_extracted_texts = []
                 extraction_progress = st.progress(0)
                 extraction_status = st.empty()
@@ -283,10 +296,7 @@ def main():
                 extraction_progress.empty()
                 extraction_status.empty()
                 
-                # Step 2: Process all extracted text efficiently
                 if all_extracted_texts:
-                    st.write("🔗 **Step 2: Combining and analyzing all code...**")
-                    
                     # Create combined text with file separators
                     combined_text = ""
                     individual_texts_display = ""
@@ -299,32 +309,51 @@ def main():
                         individual_texts_display += f"📄 **{item['filename']}:**\n"
                         individual_texts_display += item['text'] + "\n" + "="*50 + "\n\n"
                     
-                    # Store results
+                    # Store results (text extraction only)
                     st.session_state.all_individual_texts = all_extracted_texts
                     st.session_state.combined_extracted_text = combined_text
                     st.session_state.individual_texts_display = individual_texts_display
                     
-                    # Step 3: Get code overview efficiently
+                    # Clear previous analysis results
+                    if 'combined_overview' in st.session_state:
+                        del st.session_state.combined_overview
+                    if 'combined_line_explanation' in st.session_state:
+                        del st.session_state.combined_line_explanation
+                    
+                    st.success(f"✅ Text extracted from {len(all_extracted_texts)} images! Use 'Analyze Extracted Text' to run analysis.")
+                else:
+                    st.error("❌ No text found in any of the uploaded images.")
+                    
+            elif analyze_button:
+                # Analysis only (requires existing extracted text)
+                if hasattr(st.session_state, 'combined_extracted_text') and st.session_state.combined_extracted_text:
+                    st.write("---")
+                    st.subheader("🔍 Analyzing Extracted Text")
+                    
+                    combined_text = st.session_state.combined_extracted_text
+                    
                     analysis_progress = st.progress(0)
                     analysis_status = st.empty()
                     
-                    analysis_status.text("💡 Analyzing combined code overview...")
-                    analysis_progress.progress(50)
+                    # Step 1: Get code overview
+                    analysis_status.text(f"💡 Analyzing code overview with {selected_code_model}...")
+                    analysis_progress.progress(33)
                     combined_overview = get_code_overview_fast(combined_text, selected_code_model)
                     st.session_state.combined_overview = combined_overview
                     
-                    # Step 4: Get line-by-line explanation efficiently
-                    analysis_status.text("🔍 Generating line-by-line explanations...")
-                    analysis_progress.progress(100)
+                    # Step 2: Get line-by-line explanation
+                    analysis_status.text(f"🔍 Generating line-by-line explanations with {selected_code_model}...")
+                    analysis_progress.progress(66)
                     combined_line_explanation = explain_code_fast(combined_text, selected_code_model)
                     st.session_state.combined_line_explanation = combined_line_explanation
                     
+                    analysis_progress.progress(100)
                     analysis_progress.empty()
                     analysis_status.empty()
                     
-                    st.success(f"✅ Successfully processed {len(all_extracted_texts)} images with optimized performance!")
+                    st.success(f"✅ Analysis completed using {selected_code_model}!")
                 else:
-                    st.error("❌ No text found in any of the uploaded images.")
+                    st.error("❌ No extracted text found! Please run 'Extract Text Only' first.")
     
     with col2:
         st.header("Final Results")
