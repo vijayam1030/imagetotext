@@ -1,0 +1,19 @@
+# Advanced OCR System with Multiple AI Models
+streamlit>=1.28.0
+requests>=2.31.0
+Pillow>=10.0.0
+ollama>=0.1.7
+numpy>=1.24.0
+
+# OCR Core
+pytesseract>=0.3.10
+opencv-python>=4.8.0
+
+# Language Detection
+guesslang>=2.2.1
+pygments>=2.15.0
+
+# Additional utilities
+regex>=2023.6.3
+python-magic>=0.4.27
+langdetect>=1.0.9

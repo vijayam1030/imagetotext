@@ -5,3 +5,7 @@ ollama>=0.1.7
 pytesseract>=0.3.10
 opencv-python>=4.8.0
 numpy>=1.24.0
+pygments>=2.16.0
+
+# Optional for enhanced language detection (has TensorFlow dependencies)
+# guesslang>=2.2.1

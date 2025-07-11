@@ -1,0 +1,118 @@
+REM =======================================================
+REM Advanced OCR System - All Commands Reference
+REM =======================================================
+
+REM QUICK START (run these in order):
+REM 1. setup_complete.bat
+REM 2. run_ocr_app.bat
+
+REM =======================================================
+REM BATCH FILES CREATED:
+REM =======================================================
+
+setup_complete.bat      Complete system setup (run first)
+run_ocr_app.bat         Start the OCR application  
+test_ocr_system.bat     Test the system
+help_commands.bat       Show help and commands
+check_status.bat        Check system status
+quick_install.bat       Install essential packages only
+
+REM =======================================================
+REM MANUAL PYTHON COMMANDS:
+REM =======================================================
+
+REM Install dependencies:
+pip install -r requirements_advanced.txt
+
+REM Individual packages:
+pip install streamlit>=1.28.0
+pip install pytesseract>=0.3.10
+pip install opencv-python>=4.8.0
+pip install ollama>=0.1.7
+pip install numpy>=1.24.0
+pip install Pillow>=10.0.0
+pip install guesslang>=2.2.1
+pip install pygments>=2.15.0
+pip install regex>=2023.6.3
+
+REM Run scripts:
+python setup_advanced_ocr.py
+python test_advanced_system.py
+streamlit run advanced_ocr_system.py
+
+REM =======================================================
+REM OLLAMA COMMANDS:
+REM =======================================================
+
+REM Check Ollama:
+ollama list
+
+REM Pull models:
+ollama pull codellama:13b
+ollama pull deepseek-coder-v2:16b
+ollama pull wizardcoder:34b
+ollama pull phi3:medium
+ollama pull llama3.2-vision:11b
+
+REM =======================================================
+REM SYSTEM CHECK COMMANDS:
+REM =======================================================
+
+python --version
+pip --version
+tesseract --version
+ollama list
+pip list
+
+REM =======================================================
+REM TROUBLESHOOTING:
+REM =======================================================
+
+REM If Tesseract not found:
+REM Download: https://github.com/UB-Mannheim/tesseract/wiki
+REM Add to PATH: C:\Program Files\Tesseract-OCR
+
+REM If Ollama not found:
+REM Download: https://ollama.ai
+REM Start Ollama service
+
+REM If packages fail to install:
+pip install --upgrade setuptools wheel
+pip install --no-cache-dir [package-name]
+
+REM =======================================================
+REM FILE STRUCTURE:
+REM =======================================================
+
+REM Main files:
+REM advanced_ocr_system.py           - Main application
+REM setup_advanced_ocr.py            - Setup script  
+REM test_advanced_system.py          - Test script
+REM requirements_advanced.txt        - Dependencies
+REM README_Advanced_OCR.md           - Documentation
+
+REM Batch files:
+REM setup_complete.bat               - Complete setup
+REM run_ocr_app.bat                  - Start app
+REM test_ocr_system.bat              - Test system
+REM help_commands.bat                - Help/commands
+REM check_status.bat                 - Status check
+REM quick_install.bat                - Quick install
+
+REM Test images (created by test script):
+REM test_sql_code.png
+REM test_python_code.png
+REM test_javascript_code.png
+
+REM Output directory:
+REM extracted_code/                  - Saved extracted code
+
+REM =======================================================
+REM USAGE WORKFLOW:
+REM =======================================================
+
+REM 1. Run setup_complete.bat (first time only)
+REM 2. Run run_ocr_app.bat (starts the application)
+REM 3. Upload image in web interface
+REM 4. Click "Extract and Clean Code"
+REM 5. Download cleaned code files

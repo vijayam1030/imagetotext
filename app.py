@@ -31,21 +31,29 @@ def preprocess_image_for_ocr(image):
             gray = img_array
         
         # Apply image processing for better OCR
-        # Increase contrast
-        enhanced = cv2.convertScaleAbs(gray, alpha=1.5, beta=0)
+        # Increase contrast and brightness
+        enhanced = cv2.convertScaleAbs(gray, alpha=1.2, beta=30)
+        
+        # Apply morphological operations to clean up text
+        kernel = np.ones((1,1), np.uint8)
+        enhanced = cv2.morphologyEx(enhanced, cv2.MORPH_CLOSE, kernel)
         
         # Denoise
-        denoised = cv2.fastNlMeansDenoising(enhanced)
+        denoised = cv2.fastNlMeansDenoising(enhanced, h=30)
+        
+        # Sharpen the image for better character recognition
+        kernel_sharpen = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+        sharpened = cv2.filter2D(denoised, -1, kernel_sharpen)
         
         # Resize if image is too small (OCR works better on larger images)
-        height, width = denoised.shape
+        height, width = sharpened.shape
         if height < 300 or width < 300:
             scale_factor = max(300/height, 300/width)
             new_height = int(height * scale_factor)
             new_width = int(width * scale_factor)
-            denoised = cv2.resize(denoised, (new_width, new_height), interpolation=cv2.INTER_CUBIC)
+            sharpened = cv2.resize(sharpened, (new_width, new_height), interpolation=cv2.INTER_CUBIC)
         
-        return denoised
+        return sharpened
     except Exception as e:
         # Return original image as numpy array if preprocessing fails
         return np.array(image.convert('L'))
@@ -57,7 +65,9 @@ def extract_text_with_ocr(image):
         processed_img = preprocess_image_for_ocr(image)
         
         # Configure Tesseract for code/text recognition
-        custom_config = r'--oem 3 --psm 6'
+        # PSM 4: Single column of text of variable sizes
+        # PSM 6: Single uniform block of text
+        custom_config = r'--oem 3 --psm 4 -c preserve_interword_spaces=1'
         
         # Extract text using Tesseract
         ocr_text = pytesseract.image_to_string(processed_img, config=custom_config)
@@ -134,17 +144,21 @@ Extract the text:"""
 def get_code_overview_fast(extracted_text, model_name="qwen2.5-coder:1.5b"):
     """Fast code overview without streaming"""
     try:
+        # Detect the language for better analysis
+        language = detect_language(extracted_text)
+        
         response = ollama.chat(
             model=model_name,
             messages=[
                 {
                     'role': 'user',
-                    'content': f'''Analyze this code and provide a detailed overview:
+                    'content': f'''Analyze this {language.upper()} code and provide a detailed overview:
 
 1. Main purpose and functionality
-2. Programming language and key components
-3. Important functions/methods
-4. Overall architecture
+2. Programming language ({language.upper()}) and key components
+3. Important functions/methods/queries
+4. Overall architecture and structure
+5. Key {language.upper()}-specific features used
 
 Code:
 {extracted_text}'''
@@ -164,36 +178,112 @@ Code:
     except Exception as e:
         return f"Error getting code overview: {str(e)}"
 
+def detect_language(text):
+    """Detect the programming language from the extracted text"""
+    text_lower = text.lower()
+    
+    # SQL keywords
+    sql_keywords = ['select', 'from', 'where', 'insert', 'update', 'delete', 'create table', 'alter table', 'drop table']
+    # Python keywords
+    python_keywords = ['def ', 'import ', 'from ', 'class ', 'if __name__', 'print(']
+    # JavaScript/C++ keywords
+    js_cpp_keywords = ['function', 'var ', 'let ', 'const ', '{}', 'console.log']
+    
+    sql_count = sum(1 for keyword in sql_keywords if keyword in text_lower)
+    python_count = sum(1 for keyword in python_keywords if keyword in text_lower)
+    js_cpp_count = sum(1 for keyword in js_cpp_keywords if keyword in text_lower)
+    
+    if sql_count > max(python_count, js_cpp_count):
+        return 'sql'
+    elif python_count > js_cpp_count:
+        return 'python'
+    else:
+        return 'javascript'
+
 def explain_code_fast(extracted_text, model_name="qwen2.5-coder:1.5b"):
     """Fast line-by-line explanation without streaming"""
     try:
+        # Detect the language to use appropriate comment syntax
+        language = detect_language(extracted_text)
+        
+        if language == 'sql':
+            comment_style = "-- "
+            example = """-- Select all columns from the users table
+SELECT * FROM users;
+
+-- Insert a new user record with ID 1 and name 'John'
+INSERT INTO users (id, name) VALUES (1, 'John');
+
+-- Create a new table called customers with two columns
+CREATE TABLE customers (
+    -- Define the primary key column for unique identification
+    id INT PRIMARY KEY,
+    -- Define a variable-length string column for storing names
+    name VARCHAR(100)
+-- Close the table definition
+);"""
+        elif language == 'python':
+            comment_style = "# "
+            example = """# Import the requests library for HTTP operations
+import requests
+
+# Define a function to process user data
+def process_data(user_input):
+    # Create an empty dictionary to store results
+    results = {}
+    # Return the processed results dictionary
+    return results"""
+        else:
+            comment_style = "// "
+            example = """// Import the requests library for HTTP operations
+import requests
+
+// Define a function to process user data
+def process_data(user_input) {
+    // Create an empty dictionary to store results
+    results = {}
+    // Return the processed results dictionary
+    return results
+}"""
+        
         response = ollama.chat(
             model=model_name,
             messages=[
                 {
                     'role': 'user',
-                    'content': f'''Explain this code line by line with detailed comments:
+                    'content': f'''You are a code documentation expert. I need you to add a comment above EVERY SINGLE LINE of {language.upper()} code.
 
-Format:
+CRITICAL REQUIREMENTS:
+1. For each line of code, write EXACTLY this format:
+   {comment_style}[Explanation of what this specific line does]
+   [THE ACTUAL CODE LINE]
+
+2. DO NOT write summaries or overviews
+3. DO NOT group multiple lines together
+4. DO NOT skip any lines
+5. EVERY line must have its own individual comment
+6. Keep the original code EXACTLY as it is
+7. Add comments ABOVE each line, not inline
+
+EXAMPLE FORMAT (must follow this pattern):
 ```
-// Comment explaining what this line does
-code line
-
-// Comment explaining what this line does  
-code line
+{example}
 ```
 
-Code:
+IMPORTANT: Go through the code line by line. For each line, first write a comment explaining what THAT SPECIFIC LINE does, then write the actual line of code. Do this for EVERY SINGLE LINE.
+
+Original {language.upper()} code to document:
 {extracted_text}'''
                 }
             ],
             options={
                 'num_gpu': -1,
                 'num_thread': 1,
-                'temperature': 0.1,
-                'num_predict': 1500,
-                'num_ctx': 2048,
-                'top_p': 0.9,
+                'temperature': 0.0,
+                'num_predict': 2000,
+                'num_ctx': 4096,
+                'top_p': 0.1,
+                'repeat_penalty': 1.0,
             },
             stream=False
         )
