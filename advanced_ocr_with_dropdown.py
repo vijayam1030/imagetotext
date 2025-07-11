@@ -1,76 +1,7 @@
 #!/usr/bin/env python3
 """
-Advanced OCR System with Expandable UI Sections
-Enhanced version with expandable sec    st.title("🔍 Advanced OCR Code Extractor")
-    st.markdown("**Tesseract OCR + Multiple AI Models + Language Detection + Code Cleanup**")
-    
-    # Model selection guide
-    with st.expander("🤖 AI Model Selection Guide", expanded=False):
-        st.markdown("""
-        ### 📊 Choose the Right Model for Your Needs:
-        """)
-        
-        # Create a table using columns for better formatting
-        st.markdown("**Model Comparison:**")
-        col1, col2, col3, col4, col5 = st.columns([3, 1, 1, 2, 1])
-        
-        with col1:
-            st.markdown("**Model**")
-        with col2:
-            st.markdown("**Size**")
-        with col3:
-            st.markdown("**Speed**")
-        with col4:
-            st.markdown("**Best For**")
-        with col5:
-            st.markdown("**Quality**")
-        
-        st.markdown("---")
-        
-        models_data = [
-            ("qwen2.5-coder:1.5b", "1.1GB", "⚡ Very Fast", "Quick analysis", "Good"),
-            ("phi3:mini", "2.3GB", "⚡ Very Fast", "Resource limited", "Good"),
-            ("codellama:7b", "3.8GB", "🚀 Fast", "Python, JavaScript", "Very Good"),
-            ("qwen2.5-coder:7b", "4.2GB", "🚀 Fast", "Web development", "Very Good"),
-            ("codellama:13b", "7.3GB", "⚖️ Medium", "Python, Java, C++", "Excellent"),
-            ("phi3:medium", "7.9GB", "🚀 Fast", "General purpose", "Very Good"),
-            ("deepseek-coder-v2:16b", "9.1GB", "⚖️ Medium", "SQL, Enterprise", "Excellent"),
-            ("codellama:34b", "19GB", "🐌 Slow", "Complex code", "Outstanding"),
-        ]
-        
-        for model, size, speed, best_for, quality in models_data:
-            col1, col2, col3, col4, col5 = st.columns([3, 1, 1, 2, 1])
-            with col1:
-                st.markdown(f"**{model}**")
-            with col2:
-                st.markdown(size)
-            with col3:
-                st.markdown(speed)
-            with col4:
-                st.markdown(best_for)
-            with col5:
-                st.markdown(quality)
-        
-        st.markdown("""
-        ### 💡 Recommendations:
-        - **Beginner/Testing**: Start with `qwen2.5-coder:1.5b` or `phi3:mini`
-        - **General Use**: `codellama:7b` or `qwen2.5-coder:7b` 
-        - **Best Quality**: `codellama:13b` or `deepseek-coder-v2:16b`
-        - **Professional**: `codellama:34b` (requires 16GB+ RAM)
-        """)
-        
-        st.markdown("### 📥 Installation Commands:")
-        st.code("""# Quick start (small models)
-ollama pull qwen2.5-coder:1.5b
-ollama pull phi3:mini
-
-# Recommended (balanced)
-ollama pull codellama:7b
-ollama pull qwen2.5-coder:7b
-
-# High quality (if you have the resources)
-ollama pull codellama:13b
-ollama pull deepseek-coder-v2:16b""", language="bash")ons instead of tabs
+Advanced OCR System with Expandable UI Sections and Model Selection
+Enhanced version with expandable sections and dropdown model selection with size info
 """
 
 import streamlit as st
@@ -177,15 +108,78 @@ def main():
     """Main Streamlit application with expandable sections"""
     st.set_page_config(
         page_title="Advanced OCR Code Extractor",
-        page_icon="🔧",
-        layout="wide"
+        page_icon="🔍",
+        layout="wide",
+        initial_sidebar_state="expanded"
     )
     
-    st.title("🔧 Advanced OCR Code Extractor")
+    st.title("🔍 Advanced OCR Code Extractor")
     st.markdown("**Tesseract OCR + Multiple AI Models + Language Detection + Code Cleanup**")
-    st.markdown("*Now with expandable sections for better viewing!*")
     
-    # Initialize components
+    # Model selection guide
+    with st.expander("🤖 AI Model Selection Guide", expanded=False):
+        st.markdown("### 📊 Choose the Right Model for Your Needs:")
+        
+        # Create a table using columns for better formatting
+        col1, col2, col3, col4, col5 = st.columns([3, 1, 1, 2, 1])
+        
+        with col1:
+            st.markdown("**Model**")
+        with col2:
+            st.markdown("**Size**")
+        with col3:
+            st.markdown("**Speed**")
+        with col4:
+            st.markdown("**Best For**")
+        with col5:
+            st.markdown("**Quality**")
+        
+        st.markdown("---")
+        
+        models_data = [
+            ("qwen2.5-coder:1.5b", "1.1GB", "⚡ Very Fast", "Quick analysis", "Good"),
+            ("phi3:mini", "2.3GB", "⚡ Very Fast", "Resource limited", "Good"),
+            ("codellama:7b", "3.8GB", "🚀 Fast", "Python, JavaScript", "Very Good"),
+            ("qwen2.5-coder:7b", "4.2GB", "🚀 Fast", "Web development", "Very Good"),
+            ("codellama:13b", "7.3GB", "⚖️ Medium", "Python, Java, C++", "Excellent"),
+            ("phi3:medium", "7.9GB", "🚀 Fast", "General purpose", "Very Good"),
+            ("deepseek-coder-v2:16b", "9.1GB", "⚖️ Medium", "SQL, Enterprise", "Excellent"),
+            ("codellama:34b", "19GB", "🐌 Slow", "Complex code", "Outstanding"),
+        ]
+        
+        for model, size, speed, best_for, quality in models_data:
+            col1, col2, col3, col4, col5 = st.columns([3, 1, 1, 2, 1])
+            with col1:
+                st.markdown(f"**{model}**")
+            with col2:
+                st.markdown(size)
+            with col3:
+                st.markdown(speed)
+            with col4:
+                st.markdown(best_for)
+            with col5:
+                st.markdown(quality)
+        
+        st.markdown("### 💡 Recommendations:")
+        st.markdown("- **Beginner/Testing**: Start with `qwen2.5-coder:1.5b` or `phi3:mini`")
+        st.markdown("- **General Use**: `codellama:7b` or `qwen2.5-coder:7b`")
+        st.markdown("- **Best Quality**: `codellama:13b` or `deepseek-coder-v2:16b`")
+        st.markdown("- **Professional**: `codellama:34b` (requires 16GB+ RAM)")
+        
+        st.markdown("### 📥 Installation Commands:")
+        st.code('''# Quick start (small models)
+ollama pull qwen2.5-coder:1.5b
+ollama pull phi3:mini
+
+# Recommended (balanced)
+ollama pull codellama:7b
+ollama pull qwen2.5-coder:7b
+
+# High quality (if you have the resources)
+ollama pull codellama:13b
+ollama pull deepseek-coder-v2:16b''', language="bash")
+    
+    # Initialize core components
     detector = AdvancedLanguageDetector()
     ocr_engine = TesseractOCREngine()
     cleaner = OllamaCodeCleaner()
@@ -195,17 +189,10 @@ def main():
     with st.sidebar:
         st.header("⚙️ Configuration")
         
+        # Image display settings
         st.subheader("🖼️ Image Display")
-        image_display_width = st.slider(
-            "Display Width", 
-            min_value=300, 
-            max_value=1200, 
-            value=800, 
-            step=100,
-            help="Adjust image display width"
-        )
-        
-        show_image_details = st.checkbox("Show image analysis", value=True)
+        image_display_width = st.slider("Image display width", 200, 800, 400)
+        show_image_details = st.checkbox("Show image details", value=False)
         
         st.subheader("🤖 Available Models")
         if cleaner.available_models:
@@ -235,8 +222,7 @@ def main():
         else:
             st.error("❌ No Ollama models found")
             st.markdown("**💡 Quick Install Commands:**")
-            st.code("""
-# Fast, small models (good for testing)
+            st.code('''# Fast, small models (good for testing)
 ollama pull qwen2.5-coder:1.5b
 ollama pull phi3:mini
 
@@ -246,17 +232,9 @@ ollama pull qwen2.5-coder:7b
 
 # High-quality models (if you have GPU/RAM)
 ollama pull codellama:13b
-ollama pull deepseek-coder-v2:16b
-            """, language="bash")
+ollama pull deepseek-coder-v2:16b''', language="bash")
         
-        st.subheader("🔍 Language Detection")
-        if GUESSLANG_AVAILABLE:
-            st.markdown("• **Guesslang**: ✅ (ML-based)")
-        else:
-            st.markdown("• **Guesslang**: ❌ (TensorFlow conflicts)")
-        st.markdown(f"• **Pygments**: {'✅' if PYGMENTS_AVAILABLE else '❌'} (Lexer-based)")
-        st.markdown("• **Pattern Matching**: ✅ (Enhanced rules)")
-        
+        # Guesslang information
         if not GUESSLANG_AVAILABLE:
             with st.expander("ℹ️ About Guesslang"):
                 st.markdown("""
@@ -310,55 +288,56 @@ ollama pull deepseek-coder-v2:16b
             with st.expander("📊 Image Analysis", expanded=False):
                 col1, col2, col3, col4 = st.columns(4)
                 with col1:
-                    st.metric("Width", f"{width}px")
+                    st.metric("📏 Width", f"{width}px")
                 with col2:
-                    st.metric("Height", f"{height}px")
+                    st.metric("📐 Height", f"{height}px")
                 with col3:
-                    st.metric("Size", f"{file_size:.1f}KB")
+                    st.metric("💾 File Size", f"{file_size:.1f}KB")
                 with col4:
-                    st.metric("Format", image.format or "Unknown")
-                
-                # Image quality recommendations
-                if width < 500 or height < 300:
-                    st.warning("⚠️ Low resolution detected. Consider using a higher resolution image for better OCR accuracy.")
-                elif width > 2000 or height > 2000:
-                    st.info("💡 High resolution image. This may take longer to process but should give better results.")
-                
-                if file_size > 5000:
-                    st.warning("⚠️ Large file size. Processing may be slower.")
+                    st.metric("🎨 Mode", image.mode)
         
-        if st.button("🚀 Extract and Clean Code", type="primary"):
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            
-            # Step 1: OCR Extraction
-            st.subheader("📝 Step 1: OCR Text Extraction")
-            with st.spinner("Extracting text with Tesseract OCR..."):
-                ocr_results = ocr_engine.extract_text(image)
+        # Step 1: OCR Processing
+        st.subheader("🔍 Step 1: OCR Text Extraction")
+        
+        with st.spinner("Extracting text from image..."):
+            # Extract text using multiple OCR strategies
+            ocr_results = ocr_engine.extract_text(image)
             
             if not ocr_results:
                 st.error("❌ No text could be extracted from the image")
                 return
             
-            # Show best OCR result
+            # Get best OCR result
             best_ocr = ocr_results[0]
             raw_text = best_ocr['text']
             
-            st.success(f"✅ Extracted {len(raw_text)} characters using {best_ocr['preprocessing']} + {best_ocr['config']}")
-            
             if show_ocr_details:
                 with st.expander("🔍 OCR Attempt Details", expanded=False):
-                    for i, result in enumerate(ocr_results[:5]):  # Show top 5
-                        st.markdown(f"**#{i+1}: {result['preprocessing']} + {result['config']} ({result['length']} chars)**")
-                        st.code(result['text'][:200] + "..." if len(result['text']) > 200 else result['text'])
-            
-            # Step 2: Language Detection
-            st.subheader("🔍 Step 2: Language Detection")
-            with st.spinner("Detecting programming language..."):
-                detected_lang, confidence, all_scores = detector.detect_language(raw_text)
-            
-            col1, col2 = st.columns([1, 2])
+                    st.markdown(f"**Best Configuration:** {best_ocr['preprocessing']} + {best_ocr['config']}")
+                    st.markdown(f"**Characters Extracted:** {len(raw_text)}")
+                    st.markdown(f"**Lines:** {best_ocr.get('lines', 'N/A')}")
+                    
+                    if len(ocr_results) > 1:
+                        st.markdown("**All OCR Attempts:**")
+                        for i, result in enumerate(ocr_results[:5]):  # Show top 5
+                            st.markdown(f"*Attempt {i+1}:* {result['preprocessing']} + {result['config']} → {result['length']} chars")
+        
+        if not raw_text.strip():
+            st.error("❌ No text detected in the image. Try adjusting the image quality or using a clearer image.")
+            return
+        
+        st.success(f"✅ Extracted {len(raw_text)} characters")
+        
+        # Step 2: Language Detection
+        st.subheader("🔍 Step 2: Programming Language Detection")
+        
+        with st.spinner("Detecting programming language..."):
+            detected_lang, confidence, all_scores = detector.detect_language(raw_text)
+        
+        if detected_lang:
+            col1, col2 = st.columns(2)
             with col1:
-                st.metric("🎯 Detected Language", detected_lang.upper())
+                st.success(f"🎯 Detected Language: **{detected_lang.upper()}**")
                 st.metric("📊 Confidence", f"{confidence:.2f}")
             
             with col2:
@@ -445,15 +424,20 @@ ollama pull deepseek-coder-v2:16b
             st.info(f"🎯 Using **{selected_model}** for {detected_lang.upper()} code analysis")
             
             # Generate analysis sections
-            col1, col2 = st.columns(2)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             
-            with col1:
-                with st.spinner("📊 Creating detailed overview..."):
+            with st.spinner("Generating detailed analysis..."):
+                try:
                     detailed_overview = cleaner.create_detailed_overview(raw_text, detected_lang, selected_model)
+                except Exception as e:
+                    st.error(f"Error generating overview: {e}")
+                    detailed_overview = "Error generating detailed overview."
                 
-            with col2:
-                with st.spinner("💬 Creating line-by-line comments..."):
+                try:
                     line_comments = cleaner.create_line_by_line_comments(raw_text, detected_lang, selected_model)
+                except Exception as e:
+                    st.error(f"Error generating comments: {e}")
+                    line_comments = raw_text  # Fallback to raw text
             
             # Display results in expandable sections
             st.subheader("📋 Analysis Results")
