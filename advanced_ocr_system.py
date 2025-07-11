@@ -25,7 +25,7 @@ try:
     GUESSLANG_AVAILABLE = True
 except ImportError:
     GUESSLANG_AVAILABLE = False
-    st.warning("Guesslang not available. Install with: pip install guesslang")
+    st.info("ℹ️ Guesslang not available (has TensorFlow dependencies). Using enhanced pattern matching + Pygments for language detection.")
 
 try:
     from pygments.lexers import guess_lexer, get_lexer_by_name
@@ -34,7 +34,7 @@ try:
     PYGMENTS_AVAILABLE = True
 except ImportError:
     PYGMENTS_AVAILABLE = False
-    st.warning("Pygments not available. Install with: pip install pygments")
+    st.warning("⚠️ Pygments not available. Install with: pip install pygments")
 
 class AdvancedLanguageDetector:
     """Multi-method language detection using guesslang and pygments"""
@@ -771,9 +771,26 @@ def main():
             st.error("❌ No Ollama models found")
         
         st.subheader("🔍 Language Detection")
-        st.markdown(f"• **Guesslang**: {'✅' if GUESSLANG_AVAILABLE else '❌'}")
-        st.markdown(f"• **Pygments**: {'✅' if PYGMENTS_AVAILABLE else '❌'}")
-        st.markdown("• **Pattern Matching**: ✅")
+        if GUESSLANG_AVAILABLE:
+            st.markdown("• **Guesslang**: ✅ (ML-based)")
+        else:
+            st.markdown("• **Guesslang**: ❌ (TensorFlow conflicts)")
+        st.markdown(f"• **Pygments**: {'✅' if PYGMENTS_AVAILABLE else '❌'} (Lexer-based)")
+        st.markdown("• **Pattern Matching**: ✅ (Enhanced rules)")
+        
+        if not GUESSLANG_AVAILABLE:
+            with st.expander("ℹ️ About Guesslang"):
+                st.markdown("""
+                Guesslang is a machine learning library for language detection but has strict TensorFlow dependencies that can conflict with other packages.
+                
+                **Our system works excellently without it** using:
+                - **Pygments lexer analysis** (very accurate)
+                - **Enhanced pattern matching** (SQL, Python, JavaScript, Java, C#)
+                - **Confidence scoring** system
+                
+                You can install guesslang in a separate environment if needed, but it's not required for good results.
+                """)
+        
         
         st.subheader("📁 File Saving")
         auto_save = st.checkbox("Auto-save extracted code", value=True)

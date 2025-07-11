@@ -1,0 +1,28 @@
+# Alternative requirements with guesslang support
+# Use this if you want enhanced language detection with guesslang
+# Note: This may require a fresh virtual environment
+
+streamlit>=1.28.0
+requests>=2.31.0
+Pillow>=10.0.0
+ollama>=0.1.7
+pytesseract>=0.3.10
+opencv-python>=4.8.0
+numpy>=1.24.0
+pygments>=2.16.0
+
+# TensorFlow and guesslang (may require specific versions)
+# Option 1: Try with latest compatible TensorFlow
+tensorflow>=2.5.0,<2.16.0
+guesslang>=2.2.1
+
+# Option 2: If Option 1 fails, try these specific versions:
+# tensorflow==2.5.0
+# guesslang==2.2.1
+
+# Installation instructions:
+# 1. Create fresh virtual environment: python -m venv venv_guesslang
+# 2. Activate: venv_guesslang\Scripts\activate (Windows) or source venv_guesslang/bin/activate (Mac/Linux)
+# 3. Install: pip install -r requirements_with_guesslang.txt
+# 4. If conflicts persist, try: pip install tensorflow==2.5.0 guesslang==2.2.1 --no-deps
+#    Then: pip install -r requirements.txt

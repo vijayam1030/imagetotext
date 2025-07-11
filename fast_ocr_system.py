@@ -702,8 +702,11 @@ def main():
     
     with col2:
         st.markdown("**Language Detection:**")
-        st.markdown("• Guesslang (if available)")
-        st.markdown("• Pattern matching fallback")
+        if GUESSLANG_AVAILABLE:
+            st.markdown("• Guesslang ✅")
+        else:
+            st.markdown("• Enhanced patterns ✅")
+        st.markdown("• Pygments fallback")
         st.markdown("• Fast confidence scoring")
     
     with col3:

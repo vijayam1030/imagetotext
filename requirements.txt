@@ -7,5 +7,8 @@ opencv-python>=4.8.0
 numpy>=1.24.0
 pygments>=2.16.0
 
-# Optional for enhanced language detection (has TensorFlow dependencies)
+# Optional for enhanced language detection (has strict TensorFlow dependencies)
+# Note: guesslang requires specific TensorFlow versions that may conflict
+# The system works well without it using pygments + pattern matching
+# Uncomment only if you can resolve TensorFlow dependency conflicts:
 # guesslang>=2.2.1
